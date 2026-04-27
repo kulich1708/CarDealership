@@ -1,0 +1,33 @@
+DROP TRIGGER IF EXISTS TR_Cars_Delete
+GO
+CREATE TRIGGER TR_Cars_Delete
+ON CarInventory INSTEAD OF DELETE AS 
+BEGIN 
+	SET NOCOUNT ON;
+	DECLARE @OriginalContext VARBINARY(128) = CONTEXT_INFO();
+	DECLARE @AllowDelete VARBINARY(128) = 0x44454C455445;
+    SET CONTEXT_INFO @AllowDelete;
+
+	BEGIN TRY
+		
+		BEGIN TRANSACTION;
+		DELETE FROM InventoryMovements
+		WHERE CarId IN (SELECT CarId FROM deleted);
+
+		DELETE FROM OrderItems
+		WHERE CarId IN (SELECT CarId FROM deleted);
+
+		DELETE FROM CarInventory
+		WHERE CarId IN (SELECT CarId FROM deleted);
+	
+		COMMIT TRANSACTION;
+
+        SET CONTEXT_INFO @OriginalContext;
+	END TRY
+	BEGIN CATCH
+		SET CONTEXT_INFO @OriginalContext;
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        THROW;
+	END CATCH
+END

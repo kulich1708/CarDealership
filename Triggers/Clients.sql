@@ -1,0 +1,24 @@
+DROP TRIGGER IF EXISTS TR_Clients_Delete
+GO
+CREATE TRIGGER TR_Clients_Delete
+ON Clients INSTEAD OF DELETE AS 
+BEGIN 
+	SET NOCOUNT ON;
+	
+    BEGIN TRY
+		BEGIN TRANSACTION;
+		DELETE FROM Orders
+		WHERE ClientId IN (SELECT ClientId FROM deleted);
+		
+		DELETE FROM Clients
+		WHERE ClientId IN (SELECT ClientId FROM deleted);
+	
+		COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
